@@ -2,15 +2,13 @@ package man.by;
 
 
 import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
 
 public class HttpResponse {
 
     private static final String WEB_SOCKET = "websocket";
 
 
-    public boolean HttpResponseCheker(HttpRequest httpRequest) throws IOException {
+    public boolean HttpResponseChecker(HttpRequest httpRequest) throws IOException {
 
         switch (httpRequest.getMethod()){
             case HEAD:
@@ -20,7 +18,7 @@ public class HttpResponse {
                 Handshake handshake = new Handshake();
                 handshake.handshakeRequest(httpRequest );
 
-                System.out.println("Handshake complete");
+                System.out.println("Handshake complete " + handshake);
                 return true;
 
             case UNRECOGNIZED:

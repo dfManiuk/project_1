@@ -1,6 +1,5 @@
 package man.by.frames;
 
-import java.awt.*;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,9 +7,16 @@ import java.net.Socket;
 
 public class FrameReader {
 
+    private Socket socket;
+    private byte[] payload;
+    private Opcode textOpcode;
 
+    public FrameReader(Socket socket) throws IOException {
+        this.socket = socket;
+        read();
+    }
 
-    public void read(Socket socket) throws IOException {
+    private void read() throws IOException {
         byte[] data = null;
         int length = -1;
         InputStream is = socket.getInputStream();
@@ -24,10 +30,25 @@ public class FrameReader {
             String da = bytesToHex(data);
             System.out.println(da);
 
-            new Frame().parse(data).toString();
+            Frame frame = new Frame().parse(data);
+
+            opcodChecker( frame);
+
+            this.payload = frame.demaskingPayload;
 
         }
     }
+
+
+    private void opcodChecker(Frame frame){
+        switch (frame.opcode) {
+            case 8:
+                System.out.println(Opcode.values()[frame.opcode]);
+                textOpcode = Opcode.values()[frame.opcode];
+        }
+    }
+
+
     private static String bytesToHex(byte[] array)
     {
         char[] val = new char[2*array.length];
@@ -41,6 +62,20 @@ public class FrameReader {
         return String.valueOf(val);
     }
 
+    public byte[] getPayload(){
+        return payload;
+    }
+
+    public Opcode getTextOpcode(){
+        return textOpcode;
+    }
+
+    public Socket getSocket(){
+        return socket;
+    }
+
+
+
     private class Frame {
 
        private boolean fin;
@@ -49,8 +84,9 @@ public class FrameReader {
        private boolean rsv3;
        private byte opcode;
        private boolean masked;
-       private int payloadLength;
-       private int byteCount = 0;
+       private byte[] maskingKey;
+       private byte[] payload;
+       private byte[] demaskingPayload;
 
         private Frame parse(byte[] data){
             Frame  frame = new Frame();
@@ -60,25 +96,44 @@ public class FrameReader {
             frame.rsv3 = ((data[0] & 0x10) != 0);
             frame.opcode = (byte)(data[0] & 0xF);
             frame.masked = ((data[0] & 0x80) != 0);
-            frame.payloadLength = (byte) (0x0F & data[1]);
+            int payloadLength = (byte) (0x7F & data[1]);
+
+            int byteCount = 0;
             if (payloadLength == 0x7F){
-                frame.byteCount = 8;
+                byteCount = 8;
             } else if (payloadLength == 0x7E){
-                frame.payloadLength = 2;
+                byteCount = 2;
+            }
+
+            int count = 2;
+
+            while (--byteCount > 0){
+                byte b = data[count++];
+                payloadLength |= (b & 0xFF) << (8 * byteCount);
+            }
+
+            if(frame.masked){
+                frame.maskingKey = new byte[4];
+                for (int i = 0; i < 4; i++) {
+                    frame.maskingKey[i] = data[count++];
+                }
+            }
+
+            frame.payload = new byte[payloadLength];
+            frame.demaskingPayload = new byte[payloadLength];
+            System.out.println("");
+            for (int i = 0; i < frame.payload.length; i++) {
+                frame.payload[i] = data[count++];
+            }
+
+            if (frame.masked){
+                for (int i = 0; i < frame.payload.length; i++){
+                    frame.demaskingPayload[i] = (byte) (frame.payload[i] ^ frame.maskingKey[i % 4]);
+                    System.out.print((char) (frame.demaskingPayload[i]));
+                }
             }
 
             return frame;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(this.fin).append(' ').append(this.rsv1).append(' ').append(this.rsv2).append(' ').append(this.rsv3)
-                    .append(' ').append(this.opcode) .append(' ').append(masked).append(' ').append(payloadLength);
-
-            System.out.println(stringBuilder.toString());
-
-            return stringBuilder.toString();
         }
     }
 }

@@ -1,6 +1,7 @@
 package man.by;
 
 import man.by.frames.FrameReader;
+import man.by.frames.FrameWriter;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -36,14 +37,26 @@ public class Server {
                 try {
 
                     while (wersockrt){
-                        new FrameReader().read(socket);
+                        FrameReader fr = new FrameReader(socket);
+
+                        FrameWriter fw = new FrameWriter(fr);
+
+                        wersockrt = fw.isClose();
+
+                        if(!wersockrt){
+                            socket = serverSocket.accept();
+                        }
                     }
+
+
 
                     HttpRequest req = new HttpRequest(socket);
 
                     HttpResponse res = new HttpResponse();
 
-                    wersockrt = res.HttpResponseCheker(req);
+                    wersockrt = res.HttpResponseChecker(req);
+
+
 
                 } catch (IOException e) {
                     e.printStackTrace();

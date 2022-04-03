@@ -13,7 +13,7 @@ import java.util.Map;
 public class HttpRequest {
 
     private List<String> headers = new ArrayList<String>();
-    Map<String, String> headerFields = new HashMap<String,String>();
+    private Map<String, String> headerFields = new HashMap<String,String>();
     private Method method;
     private Socket socket;
 
@@ -39,7 +39,6 @@ public class HttpRequest {
     }
 
     private void parseRequestLine(String str) {
-
         String[] split = str.split("\\s+");
         try {
             method = Method.valueOf(split[0]);
